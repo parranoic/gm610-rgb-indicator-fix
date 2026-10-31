@@ -1,4 +1,4 @@
-# Newmen GM610 â€” Fn / Tab RGB indicator fix
+# Newmen GM610 — Fn / Tab RGB indicator fix
 
 A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware revision. It makes the always-on status LEDs behave like normal keyboard lighting:
 
@@ -12,6 +12,29 @@ A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware rev
 > **Risk of permanently bricking your keyboard.** Flashing can fail, interrupt power, destroy application firmware, or leave the device unable to re-enter its ISP bootloader. **You perform every action entirely at your own risk.** The author/contributors accept no responsibility or liability for damage, lost data, broken devices, or any other consequences. The code is provided **AS IS, without warranty**; this notice is not a guarantee of legal immunity.
 >
 > **The patcher only works with a *byte-identical supported application revision* and the known bootloader.** Another GM610, even with the same model name, may have incompatible firmware. **Never bypass the hash checks.**
+
+## TL;DR — what this does and how to use it
+
+**What it fixes:** On the GM610, **Fn** normally stays a battery-status color (often white), and **Tab** turns blue/red to show its wireless connection. This patch changes **nine bytes** in one specific firmware version so **Tab uses its normal RGB setting**, while **Fn copies Tab's RGB color and follows the keyboard's brightness**. The keys still work; the special battery/connection LED colors are intentionally hidden.
+
+**Quick start (Windows):**
+
+1. **Know the risk:** This can permanently brick the keyboard. It has worked on **one** GM610, not every GM610. Keep another keyboard handy.
+2. **Get ready:** Install Python 3.11+ and download [`hidapitester`](https://github.com/todbot/hidapitester/releases) and [`sinowisp`](https://github.com/karstx/sinowisp/releases). Connect the GM610 by USB.
+3. **Enter firmware-update mode:** Follow [Step 2](#2-enter-isp-mode-active-device-command) to find the correct HID interface and send the tested entry command. **Confirm the USB ID changes from `12C9:6001` to `0603:1020`** before continuing.
+4. **Save your original firmware:** Follow [Step 3](#3-back-up-your-own-original-firmware) to make a **private 65,536-byte backup** using `sinowisp`. A read is not completely non-invasive. Keep an extra copy somewhere safe.
+5. **Make the patch:** Open PowerShell in the folder containing the script and your backup, then run:
+
+   ```powershell
+   py -3 .\patch_gm610.py inspect .\private\gm610_stock_full.bin
+   py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin
+   py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_patched.bin
+   ```
+
+   **If the script says your firmware or bootloader doesn't match, STOP.** Do not bypass its checks.
+6. **Flash and check:** Follow [Step 5](#5-flash-the-patched-application) to write **only** `local-output/gm610_rgb_patched.bin` (the **61,440-byte application**, **not** the full backup). Reconnect the keyboard, check it works, and try a solid RGB color.
+
+If something goes wrong, see [Recovery and rollback](docs/RECOVERY.md). **There is no guaranteed way to recover a GM610 that no longer enters update mode.** For exact commands and safety checks, follow the [full step-by-step guide](#step-by-step); this summary is not a substitute for it.
 
 ## Compatibility: what was actually tested
 
