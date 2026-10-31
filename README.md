@@ -1,4 +1,4 @@
-# Newmen GM610 — Fn / Tab RGB indicator fix
+# Newmen GM610 â€” Fn / Tab RGB indicator fix
 
 A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware revision. It makes the always-on status LEDs behave like normal keyboard lighting:
 
@@ -38,7 +38,6 @@ patch_gm610.py              Offline patch generator, compatibility check, verifi
 README.md                   Instructions and risk warning
 docs/TECHNICAL.md           Exact byte changes and reverse-engineering notes
 docs/RECOVERY.md            Restoring stock firmware and limits of recovery
-docs/PUBLISHING.md          Publishing checklist and sample git commands
 tests/test_patch_gm610.py   Offline structural tests
 .github/workflows/tests.yml Automated tests that do NOT use firmware or hardware
 .gitignore                  Prevents accidental committing of firmware dumps
@@ -191,6 +190,3 @@ The script modifies a locally supplied firmware readout using five in-place inst
 
 **Not affiliated with, sponsored by, or endorsed by Newmen, SinoWealth, Beken, or the external tool authors.** The MIT license covers this repository's original code and documentation, **not** vendor firmware or third-party applications.
 
-## Publishing
-
-See [PUBLISHING.md](docs/PUBLISHING.md) for a checked GitHub upload checklist and suggested repository description.
