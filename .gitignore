@@ -1,0 +1,22 @@
+# NEVER commit firmware dumps, generated application images, vendor updaters,
+# ISP bootloaders or local device data to this public source-only repository.
+local-output/
+private/
+*.bin
+*.hex
+*.ihx
+*.rom
+*.dat
+*.DAT
+*.exe
+*.dll
+*.zip
+*.7z
+*.rar
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.vscode/
+.DS_Store
