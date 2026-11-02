@@ -1,10 +1,11 @@
-# Newmen GM610 — Fn / Tab RGB indicator fix
+# Newmen GM610 — Fn / Tab RGB fix + Fn+B battery indicator
 
-A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware revision. It makes the always-on status LEDs behave like normal keyboard lighting:
+A **firmware patch for one verified Newmen GM610 revision**. v1.2 combines the original RGB indicator correction with an Fn+B battery-status shortcut:
 
 - **Fn:** no longer displays a permanently different battery-status color. By default it mirrors **Enter's normal RGB framebuffer color** and follows global brightness. The original **Fn → Tab** option is still available.
 - **Tab:** no longer forces blue/red wireless connection status colors. It displays its own configured RGB color.
-- Both Fn → Tab (31 October 2026) and Fn → Enter (1 November 2026) were **tested successfully on one physical GM610**. This is not general compatibility certification or proof every lighting effect works.
+- **Fn+B (v1.2):** while in Bluetooth mode, temporarily lights number keys **1–0** green to show the keyboard’s approximate charge *band* (2, 4, 6, 8, or 10 keys). When battery data is zero/unavailable, including the observed wired-USB mode, it leaves the regular RGB lighting unchanged.
+- Fn → Tab (31 October), Fn → Enter (1 November), and Fn+B Bluetooth/wired behavior (2 November 2026) were **tested successfully on one physical GM610**. This is not general compatibility certification or proof every lighting effect works.
 
 **This project was vibe-coded:** the reverse engineering, patch generator, and test code were created with AI assistance, with human-directed experimentation and a real-device test. There has been no formal code audit. Treat the scripts and offsets as experimental even though the specific result worked on one unit.
 
@@ -13,7 +14,16 @@ A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware rev
 >
 > **The patcher only works with a *byte-identical supported application revision* and the known bootloader.** Another GM610, even with the same model name, may have incompatible firmware. **Never bypass the hash checks.**
 
-## v1.1 — Fn now follows Enter by default
+## v1.2 — Fn+B battery-status display (new default)
+
+- Press **Fn+B** in Bluetooth mode to display the number-row battery **status band** temporarily in green. The display times out and the regular RGB effect returns.
+- **10 illuminated keys means the firmware's highest battery band**, *not* independently measured 100%; the keyboard supplies discrete battery status values rather than a calibrated percentage.
+- When the internal battery value is zero/unavailable, Fn+B does **nothing visually**. This was confirmed on the tested keyboard in wired USB mode, even while charging. This is **not explicit wired-mode detection**.
+- Keeps the previously verified **Fn → Enter** and Tab RGB fixes.
+- For the earlier RGB-only firmware use `--no-battery`; to make Fn follow Tab instead, combine `--no-battery --fn-source tab`.
+- The Fn+B feature uses new 8051 code in a previously unused firmware region, **not** just the original nine-byte patch. Risk is higher than the minimal v1.1 change.
+
+## v1.1 — Fn follows Enter (RGB-only option)
 
 - **New default:** Fn uses the RGB color of **Enter**, confirmed on a real GM610 on 1 November 2026.
 - **Original option retained:** add `--fn-source tab` to generate the earlier Fn → Tab version.
@@ -22,7 +32,7 @@ A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware rev
 
 ## TL;DR — what this does and how to use it
 
-**What it fixes:** On the GM610, **Fn** normally displays a battery-status color (often white), and **Tab** displays blue/red wireless status colors. This nine-byte patch makes **Tab use its normal RGB setting**, while **Fn copies Enter's color** (or Tab's if selected). Both follow brightness settings. The battery/connection LED colors are intentionally hidden; keyboard input still works on the tested unit.
+**What it does:** Fn adopts Enter's RGB color, Tab follows its own RGB, and **Fn+B** briefly lights number keys **1–0** as a green battery-status bar in Bluetooth mode. In wired mode (or whenever the battery value is missing/zero), Fn+B leaves the existing RGB unchanged. Battery bars show **bands**, not precise 10% increments. The previously working RGB-only version remains available.
 
 **Quick start (Windows):**
 
@@ -35,13 +45,13 @@ A **nine-byte firmware patch** for a specific Newmen GM610 keyboard firmware rev
    ```powershell
    py -3 .\patch_gm610.py inspect .\private\gm610_stock_full.bin
    py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin
-   py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_enter_patched.bin
+   py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_fn_enter_battery_v1_2.bin
    ```
 
    **If the script says your firmware or bootloader doesn't match, STOP.** Do not bypass its checks.
-6. **Flash and check:** Follow [Step 5](#5-flash-the-patched-application) to write **only** `local-output/gm610_rgb_enter_patched.bin` (the **61,440-byte application**, **not** the full backup). Reconnect the keyboard, check it types, and test **per-key colors or rainbow mode** to confirm Fn follows Enter.
+6. **Flash and check:** Follow [Step 5](#5-flash-the-patched-application) to write **only** `local-output/gm610_fn_enter_battery_v1_2.bin` (the **61,440-byte application**, **not** the full backup). Reconnect the keyboard, check it types, and test **per-key colors or rainbow mode** to confirm Fn follows Enter.
 
-To keep the older **Fn → Tab** behavior instead, use `--fn-source tab` with the `patch` and `verify` commands in [Step 4](#4-check-compatibility-and-generate-your-patch-offline).
+To keep the earlier **RGB-only v1.1** behavior, use `--no-battery`; to use the **Fn → Tab v1.0** behavior, use `--no-battery --fn-source tab` with `patch` and `verify` in [Step 4](#4-check-compatibility-and-generate-your-patch-offline).
 
 If something goes wrong, see [Recovery and rollback](docs/RECOVERY.md). **There is no guaranteed way to recover a GM610 that no longer enters update mode.** For exact commands and safety checks, follow the [full step-by-step guide](#step-by-step); this summary is not a substitute for it.
 
@@ -56,10 +66,11 @@ If something goes wrong, see [Recovery and rollback](docs/RECOVERY.md). **There 
 | ISP / bootloader USB ID | `0603:1020` |
 | ISP bootloader MD5 | `2d169670eae0d36eae8188562c1f66e8` |
 | Stock application SHA-256 | `8b5e410ca8c65897f23f560fc86688831f533c684a575e5f2e9c5da363006bca` |
-| **v1.1 Fn → Enter SHA-256 (default)** | `314e2292fb083533b82cecd824f37d087e3a1d259f1fa39859a828b202bdf583` |
+| **v1.2 Fn+B / Fn → Enter SHA-256 (default)** | `e8d9991bbc20bc7dff46ecb6d80c74c84b28c004ba777adc1fd6d74ed04da712` |
+| v1.1 Fn → Enter SHA-256 (RGB-only) | `314e2292fb083533b82cecd824f37d087e3a1d259f1fa39859a828b202bdf583` |
 | v1.0 Fn → Tab SHA-256 (option) | `4f16f98a24f1f622f304298dd02697472bb58869c4682bc92f7960be10abd30b` |
 | Flash layout | 61,440-byte application + 4,096-byte ISP bootloader |
-| Confirmed result | Both Fn → Enter and Fn → Tab work on **one** physical keyboard; Tab uses its own RGB color |
+| Confirmed result | Both Fn → Enter and Fn → Tab work on **one** physical keyboard; Tab uses its own RGB color; Fn+B shows Bluetooth bands and skips zero/unavailable readings |
 | Not established | Hardware recovery when application firmware is corrupt; other revisions; all animation effects |
 
 **Not** a generic GM610 custom firmware, a wireless-chip patch, a Newmen software mod, or a mod of the firmware embedded in the manufacturer's downloadable updater. The latter was found to be **different** from the firmware on the successfully modified keyboard. Firmware versions were not reliably labeled by the vendor; **hashes, not marketing names, determine compatibility**.
@@ -67,12 +78,15 @@ If something goes wrong, see [Recovery and rollback](docs/RECOVERY.md). **There 
 ## What's in this repository
 
 ```text
-patch_gm610.py              Offline patcher with Enter/Tab Fn reference choices
+patch_gm610.py              Offline patcher; v1.2 by default, RGB-only options retained
+battery_overlay.py           Validated 8051 Fn+B hook/code-cave assembly generator
 README.md                   Instructions, variants and risk warning
-CHANGELOG.md                v1.1 changes and previous behavior
+CHANGELOG.md                Version history, including v1.2
 docs/TECHNICAL.md           Exact byte changes and reverse-engineering notes
 docs/RECOVERY.md            Restoring stock firmware and limits of recovery
-tests/test_patch_gm610.py   Offline structural tests
+tests/test_patch_gm610.py   Original RGB-only structural tests
+tests/test_battery_overlay.py Firmware-free 8051 hook tests
+tests/mini8051.py           Minimal educational instruction interpreter
 .github/workflows/tests.yml Automated tests that do NOT use firmware or hardware
 .gitignore                  Prevents accidental committing of firmware dumps
 LICENSE                     MIT license for this repository's scripts/docs only
@@ -159,27 +173,35 @@ Before flashing, copy your backup somewhere safe. On the tested unit, USB power-
 ```powershell
 py -3 .\patch_gm610.py inspect .\private\gm610_stock_full.bin
 py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin
-py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_enter_patched.bin
+py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_fn_enter_battery_v1_2.bin
 ```
 
 The script aborts if the application or bootloader fingerprint differs. **Do not remove this guard or force it to patch another revision.**
 
-By default, `patch` makes **Fn follow Enter**. For the original Fn → Tab variant, run the following commands instead (the existing private backup can be reused):
+By default, `patch` makes **Fn follow Enter and enables Fn+B battery status (v1.2)**. The `verify` command matches the exact successful v1.2 image. For the earlier Fn → Enter RGB-only v1.1 variant:
 
 ```powershell
-py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin --fn-source tab
-py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_tab_patched.bin --fn-source tab
+py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin --no-battery
+py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_enter_patched.bin --no-battery
+```
+
+For the original Fn → Tab RGB-only v1.0 variant, use the following instead (the same private stock dump can be reused):
+
+```powershell
+py -3 .\patch_gm610.py patch .\private\gm610_stock_full.bin --no-battery --fn-source tab
+py -3 .\patch_gm610.py verify .\private\gm610_stock_full.bin .\local-output\gm610_rgb_tab_patched.bin --no-battery --fn-source tab
 ```
 
 Each command is **offline** and only reads local firmware files. An existing output is never overwritten silently. The script creates local-only files inside ignored `local-output/`:
 
 | Local file | Meaning |
 | --- | --- |
-| `gm610_rgb_enter_patched.bin` | **61,440-byte Fn → Enter patch (v1.1 default)** |
+| `gm610_fn_enter_battery_v1_2.bin` | **61,440-byte Fn → Enter + Fn+B patch (v1.2 default)** |
+| `gm610_rgb_enter_patched.bin` | **61,440-byte Fn → Enter RGB-only patch (with `--no-battery`)** |
 | `gm610_rgb_tab_patched.bin` | **61,440-byte Fn → Tab patch (if selected)** |
 | `gm610_stock_application.bin` | **61,440-byte unmodified application**, for attempted ISP rollback |
 
-Expected SHA-256: **Enter** `314e2292fb083533b82cecd824f37d087e3a1d259f1fa39859a828b202bdf583`; **Tab** `4f16f98a24f1f622f304298dd02697472bb58869c4682bc92f7960be10abd30b`. Both were tested on the same physical keyboard, not independently across different units.
+Expected SHA-256: **v1.2 battery** `e8d9991bbc20bc7dff46ecb6d80c74c84b28c004ba777adc1fd6d74ed04da712`; **v1.1 Enter RGB-only** `314e2292fb083533b82cecd824f37d087e3a1d259f1fa39859a828b202bdf583`; **v1.0 Tab RGB-only** `4f16f98a24f1f622f304298dd02697472bb58869c4682bc92f7960be10abd30b`. All are based on the same firmware revision and tested on one physical unit.
 
 Optional local unit tests (no device needed):
 
@@ -192,14 +214,14 @@ py -3 -m unittest discover -s tests -v
 Reconnect/re-enter ISP mode using step 2 if necessary. Check that the device is showing `0603:1020` **immediately before writing**. Then:
 
 ```powershell
-.\sinowisp.exe write --platform sh68f90 --vendor_id 0x12C9 --product_id 0x6001 --firmware_size 61440 --bootloader_size 4096 --page_size 2048 --isp_iface_num 1 --isp_report_id 5 --reboot false .\local-output\gm610_rgb_enter_patched.bin
+.\sinowisp.exe write --platform sh68f90 --vendor_id 0x12C9 --product_id 0x6001 --firmware_size 61440 --bootloader_size 4096 --page_size 2048 --isp_iface_num 1 --isp_report_id 5 --reboot false .\local-output\gm610_fn_enter_battery_v1_2.bin
 ```
 
 **This writes flash.** Do not disconnect USB, do not flash the **65,536-byte** dump, and do not retry blindly after an error. Stop and read [RECOVERY.md](docs/RECOVERY.md) if anything fails.
 
 ### 6. Confirm behavior
 
-After a completed write, power-cycle the GM610. Confirm it enumerates as `12C9:6001`, types normally, and has working Bluetooth/2.4 GHz as applicable. Check Fn, Tab, and the rest of the keys at multiple brightness levels. For Fn → Enter, also test **per-key colors or a multi-color effect**, because a uniform solid color cannot distinguish the chosen reference key. Normal Fn battery indication and Tab connection-status colors are intentionally hidden by the patch.
+After a completed write, power-cycle the GM610. Confirm it enumerates as `12C9:6001`, types normally, and has working Bluetooth/2.4 GHz as applicable. Check Fn, Tab, and the rest of the keys at multiple brightness levels. For Fn → Enter, also test **per-key colors or a multi-color effect**, because a uniform solid color cannot distinguish the chosen reference key. The normal Fn battery color and Tab connection-status colors remain hidden; Fn+B offers a temporary battery-band display in Bluetooth mode. A zero/unavailable value suppresses the display (not necessarily a wired-mode flag).
 
 ### Revert to stock
 
@@ -214,21 +236,21 @@ See [RECOVERY.md](docs/RECOVERY.md) for the command and the limitations of this 
 ## Known limitations
 
 - Fn mirrors **Enter** (default) or **Tab** (optional), not its own independent RGB pixel. Both choices were tested on one keyboard; all animations and wireless states are not exhaustively validated.
-- **Battery/connection indicator colors are suppressed visually.** Battery reporting and radio control were not intentionally removed.
+- **Original battery/connection indicator colors are suppressed visually.** In v1.2 Fn+B offers a temporary battery-band display when data is nonzero. A zero reading leaves RGB unchanged, including in tested wired mode. It is not a precise battery percentage display.
 - A shared brightness helper is patched; other callers could be affected, and not every effect or edge case has been tested.
 - Another GM610 revision can have completely different offsets, even if the PCB looks similar. The program will refuse unknown hashes.
 - This is **not QMK/VIA/Vial**, and there is no universal firmware installer or guaranteed unbricking procedure.
 
 ## Why this is source-only
 
-The script modifies a locally supplied firmware readout using five in-place instruction edits (nine byte values total). It **does not contain or fetch** the vendor's firmware or call `sinowisp` itself. The code can be inspected or tested without owning the keyboard, but creating the flashable image requires a matching, privately obtained full readout.
+The RGB-only variants use five in-place instruction edits (nine changed bytes). v1.2 additionally inserts small 8051 hook routines and a status lookup table into verified zero-filled firmware space, with strict source/output hashes. It **does not contain or fetch** the vendor's firmware or call `sinowisp` itself. The code can be inspected or tested without owning the keyboard, but creating the flashable image requires a matching, privately obtained full readout.
 
 ## Credits and sources
 
 - [`sinowisp`](https://github.com/karstx/sinowisp): essential open-source SinoWealth ISP read/write and documented bootloader behavior.
 - [`hidapitester`](https://github.com/todbot/hidapitester): HID descriptor inspection and ISP-entry report transmission.
 - SinoWealth 8051 / SH68F90A family information and bootloader fingerprints from `sinowisp` documentation.
-- Patch research and test instructions were developed through **AI-assisted (vibe-coded)** reverse engineering, then **one user tested both Fn → Tab and Fn → Enter variants on a real Newmen GM610** and confirmed the desired behavior.
+- Patch research and test instructions were developed through **AI-assisted (vibe-coded)** reverse engineering, then **one user tested the Fn → Tab, Fn → Enter, and Fn+B battery-band variants on a real Newmen GM610** and confirmed the desired behavior.
 
 **Not affiliated with, sponsored by, or endorsed by Newmen, SinoWealth, Beken, or the external tool authors.** The MIT license covers this repository's original code and documentation, **not** vendor firmware or third-party applications.
 

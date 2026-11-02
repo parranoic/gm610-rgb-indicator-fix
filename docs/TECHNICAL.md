@@ -1,4 +1,4 @@
-# Technical notes — GM610 RGB indicator fix (v1.1)
+# Technical notes — GM610 RGB indicator fix and Fn+B status overlay (v1.2)
 
 This project changes **one specific firmware revision** from a 65,536-byte `sinowisp` ISP readout of a Newmen GM610. The original firmware source code is unavailable. Names assigned to routines or variables are reverse-engineering descriptions, not vendor symbols.
 
@@ -59,6 +59,31 @@ The Tab status-color branch ends at `0x145A` (`0x1420 + 2 + 0x38`). The Fn indic
 | Bootloader segment | 4,096 | MD5 `2d169670eae0d36eae8188562c1f66e8` |
 
 The patcher requires a byte-identical stock application and recognized bootloader, verifies the instructions at all five sites, checks that exactly nine bytes changed, and verifies the output SHA-256. This is **not** evidence that a different GM610 revision is compatible.
+
+## v1.2: battery-status display (hardware-tested on one GM610)
+
+The earlier nine-byte v1.1 Fn → Enter image is still the base. The v1.2 application adds reconstructed 8051 machine-code routines into verified zero-filled application space; it is **not** a nine-byte-only patch. These are **application-readout offsets**, not guaranteed physical flash addresses.
+
+| Site | Effect |
+| --- | --- |
+| `0x0DC0` | Replace `MOV DPTR,#0DD0h` with `LCALL 0x9000`; key hook executes displaced instruction and returns |
+| `0x8536` | Replace call to `0x7C3F` with call to `0x9020`; initialization hook retains original call and clears the overlay timer |
+| `0x4E88` | Enter 8051 hook at `0x9040` from the common LED-output path; preserve displaced comparison/carry before returning |
+| `0x9000` | Scan handler: when Fn (bit `33h`) is held and matrix index `34` (B) is scanned, load the temporary countdown into XDATA `0x0E30` |
+| `0x9020` | Startup timer initialization |
+| `0x9040` | PWM-output overlay for number-row indices `0x16–0x1F`; uses battery nibble in XDATA `0x0E05` |
+| `0x90C3–0x90D2` | 16-byte lookup table: `0,2,2,2,4,4,6,8,8,10,10,10,10,10,10,10` |
+| `0x906D` | `JZ` displacement `0x32` skips the color override for level zero/unavailable; originally `0x18` in the preceding experimental build |
+
+**Behavioral limits:** These represent the original firmware's coarse battery-status bands, **not** accurate 10% steps. The tested Bluetooth mode showed all ten green LEDs when Windows reported 100%. The tested wired-USB mode supplied a zero/unavailable battery value; Fn+B left the existing color profile unchanged. This is not an explicit USB-mode check. Future wireless states could behave differently. Timeout uses 120 LED update passes, not a verified wall-clock duration.
+
+**Important testing history:** Initial v1.2–v1.3 experimental hooks did not trigger due to incorrect matrix-index assumptions; v1.4 corrected B index 34; v1.5 matched the stock battery bands; private v1.6 suppressed the zero-status overlay. **Public v1.2.0 is based only on the final v1.6 candidate that the user confirmed working.** Tests run an intentionally limited 8051 interpreter and do not emulate hardware interrupts, timings or LED electronics.
+
+| v1.2 built application | Length | SHA-256 |
+| --- | --- | --- |
+| Fn → Enter + Fn+B | 61,440 bytes | `e8d9991bbc20bc7dff46ecb6d80c74c84b28c004ba777adc1fd6d74ed04da712` |
+
+The public `battery_overlay.py` requires the exact v1.1 Enter application as input, then verifies the final v1.2 SHA-256. Unsupported source firmware is rejected before patching. This is **not** a bootloader patch; only the 60 KiB application should be flashed.
 
 ## ISP entry observed on test keyboard
 

@@ -16,4 +16,4 @@ jobs:
       - name: Unit tests (no firmware required)
         run: python -m unittest discover -s tests -v
       - name: Syntax check
-        run: python -m py_compile patch_gm610.py
+        run: python -m py_compile patch_gm610.py battery_overlay.py tests/test_patch_gm610.py tests/test_battery_overlay.py tests/mini8051.py
